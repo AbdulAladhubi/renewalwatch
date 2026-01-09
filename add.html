@@ -1,28 +1,74 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Add License</title>
+    <title>Add / Edit License – RenewalWatch</title>
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <h2>Add License</h2>
+    <div class="container">
+      <h2>Add / Edit License</h2>
 
-    <form id="form">
-      <input placeholder="Name" id="name" />
-      <input placeholder="Vendor" id="vendor" />
-      <input type="date" id="purchase" />
-      <input type="date" id="expiry" />
-      <input type="number" id="cost" />
-      <input placeholder="Renewal URL" id="url" />
-      <label><input type="checkbox" id="auto" /> Auto Renew</label>
-      <textarea id="notes" placeholder="Notes"></textarea>
-      <button>Add</button>
-    </form>
+      <form id="form">
+        <div class="form-group">
+          <label for="name">License / Subscription Name</label>
+          <input id="name" placeholder="Enter license name" required />
+        </div>
 
-    <h3>Notification Emails</h3>
-    <input id="email" />
-    <button id="addEmail">Add</button>
-    <ul id="emails"></ul>
+        <div class="form-group">
+          <label for="vendor">Vendor Name</label>
+          <input id="vendor" placeholder="Enter vendor name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="purchase">Purchase Date</label>
+          <input type="date" id="purchase" required />
+        </div>
+
+        <div class="form-group">
+          <label for="expiry">Expiry Date</label>
+          <input type="date" id="expiry" required />
+        </div>
+
+        <div class="form-group">
+          <label for="cost">Cost</label>
+          <input type="number" id="cost" placeholder="Enter cost" required />
+        </div>
+
+        <div class="form-group">
+          <label for="url">Renewal URL</label>
+          <input id="url" placeholder="Enter renewal URL" />
+        </div>
+
+        <div class="form-group checkbox-group">
+          <label><input type="checkbox" id="auto" /> Auto Renew</label>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes</label>
+          <textarea id="notes" placeholder="Enter any notes"></textarea>
+        </div>
+
+        <div class="form-buttons">
+          <button type="submit" class="btn save-btn">Save</button>
+          <button
+            type="button"
+            class="btn back-btn"
+            onclick="window.location.href='index.html'"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </form>
+
+      <h3>Notification Emails</h3>
+      <div class="form-group email-group">
+        <input id="email" placeholder="Enter email to notify" />
+        <button type="button" id="addEmail" class="btn add-email-btn">
+          Add Email
+        </button>
+      </div>
+      <ul id="emails" class="emails-list"></ul>
+    </div>
 
     <script type="module" src="js/add.js"></script>
   </body>

@@ -1,0 +1,24 @@
+name: Daily License Reminder
+on:
+  schedule:
+    - cron: "0 9 * * *" # every day at 9 AM UTC
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install node-fetch @supabase/supabase-js
+
+      - name: Send License Reminder Emails
+        run: node remind.mjs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RESEND_KEY: ${{ secrets.RESEND_KEY }}
