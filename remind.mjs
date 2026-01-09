@@ -12,6 +12,12 @@ const supabase = createClient(
 // --- Resend setup ---
 const RESEND_KEY = process.env.RESEND_KEY;
 
+// --- Helper: delay to avoid rate limit ---
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// --- Send email safely with rate-limit delay ---
 async function sendEmail(to, subject, html) {
   try {
     const response = await fetch("https://api.resend.com/emails", {
@@ -22,7 +28,7 @@ async function sendEmail(to, subject, html) {
       },
       body: JSON.stringify({
         from: "RenewalWatch <onboarding@resend.dev>", // Change to verified domain in production
-        to: [to],
+        to: Array.isArray(to) ? to : [to],
         subject,
         html,
       }),
@@ -34,17 +40,27 @@ async function sendEmail(to, subject, html) {
       throw new Error(JSON.stringify(data));
     }
 
-    console.log(`✅ Email sent to ${to} for "${subject}"`);
+    console.log(
+      `✅ Email sent to ${
+        Array.isArray(to) ? to.join(", ") : to
+      } for "${subject}"`
+    );
+
+    // Delay 600ms to stay under Resend rate limit (2 requests/sec)
+    await delay(600);
   } catch (error) {
-    console.error(`❌ Failed to send email to ${to}:`, error.message);
+    console.error(
+      `❌ Failed to send email to ${Array.isArray(to) ? to.join(", ") : to}:`,
+      error.message
+    );
   }
 }
 
-// --- Main function ---
+// --- Main reminder script ---
 async function runReminder() {
   console.log("🔔 RenewalWatch reminder script started...");
 
-  // Fetch licenses
+  // 1️⃣ Fetch licenses
   const { data: licenses, error: licensesError } = await supabase
     .from("licenses")
     .select("*")
@@ -60,7 +76,7 @@ async function runReminder() {
 
   console.log(`📄 Licenses found: ${licenses.length}`);
 
-  // Fetch notification emails
+  // 2️⃣ Fetch notification emails
   const { data: emails, error: emailsError } = await supabase
     .from("notification_emails")
     .select("*");
@@ -75,6 +91,7 @@ async function runReminder() {
   const today = new Date();
   let emailsSent = 0;
 
+  // 3️⃣ Loop over licenses
   for (const license of licenses) {
     if (!license.expiry_date) continue;
 
@@ -84,20 +101,23 @@ async function runReminder() {
     // Only send reminders 30, 7, or 1 day(s) before expiry
     if (![30, 7, 1].includes(daysLeft)) continue;
 
-    for (const recipient of emails) {
-      const subject = `🚨 License Expiring: ${license.name}`;
-      const html = `
-        <p><strong>${
-          license.name
-        }</strong> is expiring in <strong>${daysLeft} day(s)</strong>.</p>
-        <p>Vendor: ${license.vendor || "N/A"}<br>
-        Expiry Date: ${license.expiry_date}<br>
-        Renewal URL: <a href="${license.renewal_url}" target="_blank">${
-        license.renewal_url
-      }</a></p>
-        <p>Notes: ${license.notes || "None"}</p>
-      `;
+    // Email HTML content
+    const html = `
+      <p><strong>${
+        license.name
+      }</strong> is expiring in <strong>${daysLeft} day(s)</strong>.</p>
+      <p>Vendor: ${license.vendor || "N/A"}<br>
+      Expiry Date: ${license.expiry_date}<br>
+      Renewal URL: <a href="${license.renewal_url}" target="_blank">${
+      license.renewal_url
+    }</a></p>
+      <p>Notes: ${license.notes || "None"}</p>
+    `;
 
+    const subject = `🚨 License Expiring: ${license.name}`;
+
+    // 4️⃣ Loop over all notification emails
+    for (const recipient of emails) {
       await sendEmail(recipient.email, subject, html);
       emailsSent++;
     }
@@ -107,5 +127,5 @@ async function runReminder() {
   console.log("✅ Reminder script completed.");
 }
 
-// Run the script
+// Run the reminder script
 runReminder();
