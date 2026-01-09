@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>RenewalWatch</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header>
+      <h2>RenewalWatch</h2>
+      <button id="logout">Logout</button>
+    </header>
+
+    <main>
+      <div class="cards">
+        <div class="card blue">
+          <h3>Total</h3>
+          <span id="total">0</span>
+        </div>
+        <div class="card yellow">
+          <h3>Expiring Soon</h3>
+          <span id="soon">0</span>
+        </div>
+        <div class="card red">
+          <h3>Expired</h3>
+          <span id="expired">0</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Vendor</th>
+            <th>Expiry</th>
+            <th>Cost</th>
+            <th>Auto</th>
+          </tr>
+        </thead>
+        <tbody id="table"></tbody>
+      </table>
+
+      <a href="add.html">➕ Add License</a>
+    </main>
+
+    <script type="module" src="js/dashboard.js"></script>
+  </body>
+</html>

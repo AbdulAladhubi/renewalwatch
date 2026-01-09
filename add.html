@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Add License</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <h2>Add License</h2>
+
+    <form id="form">
+      <input placeholder="Name" id="name" />
+      <input placeholder="Vendor" id="vendor" />
+      <input type="date" id="purchase" />
+      <input type="date" id="expiry" />
+      <input type="number" id="cost" />
+      <input placeholder="Renewal URL" id="url" />
+      <label><input type="checkbox" id="auto" /> Auto Renew</label>
+      <textarea id="notes" placeholder="Notes"></textarea>
+      <button>Add</button>
+    </form>
+
+    <h3>Notification Emails</h3>
+    <input id="email" />
+    <button id="addEmail">Add</button>
+    <ul id="emails"></ul>
+
+    <script type="module" src="js/add.js"></script>
+  </body>
+</html>
