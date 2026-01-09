@@ -36,7 +36,7 @@ async function sendEmail(to, subject, html) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "RenewalWatch <support@virginiamedical.ie>",
+      from: "RenewalWatch <onboarding@resend.dev>",
       to: [to],
       subject,
       html,
