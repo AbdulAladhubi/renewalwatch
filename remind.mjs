@@ -1,96 +1,76 @@
-// Load .env ONLY if running locally (safe in GitHub Actions too)
+// remind.mjs
 import "dotenv/config";
-
 import fetch from "node-fetch";
 import { createClient } from "@supabase/supabase-js";
 
-console.log("🔔 RenewalWatch reminder script started...");
-
-// Validate environment variables
-if (
-  !process.env.SUPABASE_URL ||
-  !process.env.SUPABASE_KEY ||
-  !process.env.RESEND_KEY
-) {
-  console.error("❌ Missing environment variables.");
-  console.error("Required: SUPABASE_URL, SUPABASE_KEY, RESEND_KEY");
-  process.exit(1);
-}
-
-// Create Supabase client (SERVICE ROLE key)
+// --- Supabase setup ---
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
 
+// --- Resend setup ---
 const RESEND_KEY = process.env.RESEND_KEY;
 
-// -------------------------
-// Send Email via Resend
-// -------------------------
 async function sendEmail(to, subject, html) {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: "RenewalWatch <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
-    }),
-  });
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: "RenewalWatch <onboarding@resend.dev>", // Change to verified domain in production
+        to: [to],
+        subject,
+        html,
+      }),
+    });
 
-  const result = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(`Resend error: ${JSON.stringify(result)}`);
+    if (!response.ok) {
+      throw new Error(JSON.stringify(data));
+    }
+
+    console.log(`✅ Email sent to ${to} for "${subject}"`);
+  } catch (error) {
+    console.error(`❌ Failed to send email to ${to}:`, error.message);
   }
-
-  return result;
 }
 
-// -------------------------
-// Main Logic
-// -------------------------
-async function main() {
-  console.log("📡 Fetching licenses from Supabase...");
+// --- Main function ---
+async function runReminder() {
+  console.log("🔔 RenewalWatch reminder script started...");
 
-  const { data: licenses, error: licError } = await supabase
+  // Fetch licenses
+  const { data: licenses, error: licensesError } = await supabase
     .from("licenses")
-    .select("*");
+    .select("*")
+    .order("expiry_date", { ascending: true });
 
-  if (licError) {
-    console.error("❌ Error fetching licenses:", licError);
+  if (licensesError) {
+    console.error(
+      "❌ Supabase error fetching licenses:",
+      licensesError.message
+    );
     return;
   }
 
   console.log(`📄 Licenses found: ${licenses.length}`);
 
-  if (licenses.length === 0) {
-    console.log("ℹ️ No licenses found. Exiting.");
-    return;
-  }
-
-  console.log("📡 Fetching notification emails...");
-
-  const { data: emails, error: emailError } = await supabase
+  // Fetch notification emails
+  const { data: emails, error: emailsError } = await supabase
     .from("notification_emails")
     .select("*");
 
-  if (emailError) {
-    console.error("❌ Error fetching notification emails:", emailError);
+  if (emailsError) {
+    console.error("❌ Supabase error fetching emails:", emailsError.message);
     return;
   }
 
   console.log(`📧 Notification emails found: ${emails.length}`);
-
-  if (emails.length === 0) {
-    console.log("ℹ️ No notification emails configured. Exiting.");
-    return;
-  }
 
   const today = new Date();
   let emailsSent = 0;
@@ -101,57 +81,31 @@ async function main() {
     const expiryDate = new Date(license.expiry_date);
     const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
 
-    console.log(
-      `🔎 Checking "${license.name}" → expires in ${daysLeft} day(s)`
-    );
-
+    // Only send reminders 30, 7, or 1 day(s) before expiry
     if (![30, 7, 1].includes(daysLeft)) continue;
 
     for (const recipient of emails) {
+      const subject = `🚨 License Expiring: ${license.name}`;
       const html = `
-        <h2>License Expiry Alert</h2>
         <p><strong>${
           license.name
-        }</strong> will expire in <b>${daysLeft} day(s)</b>.</p>
-        <ul>
-          <li><b>Vendor:</b> ${license.vendor || "N/A"}</li>
-          <li><b>Cost:</b> ${license.cost || "N/A"}</li>
-          <li><b>Auto-Renew:</b> ${license.auto_renew ? "Yes" : "No"}</li>
-        </ul>
-        <p>
-          <a href="${license.renewal_url}" target="_blank">
-            Renew License
-          </a>
-        </p>
-        <hr />
-        <small>RenewalWatch – automated reminder</small>
+        }</strong> is expiring in <strong>${daysLeft} day(s)</strong>.</p>
+        <p>Vendor: ${license.vendor || "N/A"}<br>
+        Expiry Date: ${license.expiry_date}<br>
+        Renewal URL: <a href="${license.renewal_url}" target="_blank">${
+        license.renewal_url
+      }</a></p>
+        <p>Notes: ${license.notes || "None"}</p>
       `;
 
-      try {
-        await sendEmail(
-          recipient.email,
-          `🚨 License Expiring: ${license.name}`,
-          html
-        );
-        emailsSent++;
-        console.log(
-          `✅ Email sent to ${recipient.email} for "${license.name}"`
-        );
-      } catch (err) {
-        console.error(
-          `❌ Failed to send email to ${recipient.email}:`,
-          err.message
-        );
-      }
+      await sendEmail(recipient.email, subject, html);
+      emailsSent++;
     }
   }
 
-  console.log(`📬 Emails sent: ${emailsSent}`);
+  console.log(`📬 Total emails sent: ${emailsSent}`);
   console.log("✅ Reminder script completed.");
 }
 
-// Run
-main().catch((err) => {
-  console.error("🔥 Unexpected error:", err);
-  process.exit(1);
-});
+// Run the script
+runReminder();
